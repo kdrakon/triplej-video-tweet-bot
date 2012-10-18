@@ -63,7 +63,7 @@ function startStreamWatch(){
         
         // event handler for when new tweets have arrived
         stream.on('data', function (data) {
-            console.log("Got tweet...");
+            //console.log("Got tweet...");
             handleTweet(data);
         });
                 
@@ -128,7 +128,7 @@ function tweetResult(youtubeResult, originalTweet){
     
     // break if the query is empty
     if (youtubeResult.feed.entry == undefined){
-        console.log("but the Youtube result is empty.");
+        //console.log("but the Youtube result is empty.");
         return;
     }
     
@@ -144,7 +144,7 @@ function tweetResult(youtubeResult, originalTweet){
                 console.log("ERROR TWEETING:\n");
                 console.log(data);
             }else{
-                console.log("and I tweeted a video.");
+                //console.log("and I tweeted a video.");
             }
     });    
     
