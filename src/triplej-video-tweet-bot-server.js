@@ -27,12 +27,11 @@
 /**
  * Constants
  */
-C_KEY = '';
-C_SECRET_KEY = '';
-AT_KEY = '';
-AT_SECRET_KEY = '';
+//twitter keys go here
 
-YOUTUBE_REST_SEARCH = 'https://gdata.youtube.com/feeds/api/videos?q=[_QUERY]&orderby=relevance&max-results=1&v=2&alt=json';
+var YOUTUBE_REST_SEARCH = 'https://gdata.youtube.com/feeds/api/videos?q=[_QUERY]&orderby=relevance&max-results=1&lr=en&alt=json&v=2';
+var YOUTUBE_REST_TIMEOUT = 60000;
+var TWITTER_STREAM_RECONNECT_TIMEOUT = 30000;
 
  /**
   * Node Imports
@@ -70,12 +69,12 @@ function startStreamWatch(){
         stream.on('end', function (response) {
             // try to restart after being disconnected from twitter
             console.log("I was disconnected, so I'm going to try to connect again...");
-            setTimeout(startStreamWatch(), 30000);
+            setTimeout(startStreamWatch(), TWITTER_STREAM_RECONNECT_TIMEOUT);
         });
         stream.on('destroy', function (response) {
             // try to restart after a 'silent' disconnection from Twitter
             console.log("I was disconnected, so I'm going to try to connect again...");
-            setTimeout(startStreamWatch(), 30000);
+            setTimeout(startStreamWatch(), TWITTER_STREAM_RECONNECT_TIMEOUT);
         });
       
     });
@@ -91,17 +90,16 @@ function handleTweet(tweet){
         return;
     }
     
-    // first strip any "bad" characters from the tweet that can hinder the youtube query (e.g. '@')
-    var query = encodeURIComponent(tweet.text
-        .replace("@", "")
-        .replace(".", "")
-        .replace("-", " ")
-        .replace(/\[.+?\]/, "")
-        .replace("{", ")")
-        .replace("}", ")")
-    );
+    // user name (real) is tweet.user.name; I replace the twitter handle with their *hopefully better* real name
     
-    // TODO instead of dropping the twitter @, do a lookup using the Twitter api to find the users "name" mentioned in the tweet
+    // replace some things in the tweet to make the query better
+    var query_elements = tweet.text
+        .replace(/\.@.+?\s{1}/, tweet.user.name)
+        .replace(/\[.+?\]/, "")
+        .replace(/\{.+?\}/, "")
+        .split("-");
+    // query[0] = artist, query[1] = song title
+    var query = encodeURIComponent('"'.concat(query_elements[0]).concat('"+"').concat(query_elements[1]).concat('"');
     
     // setup the youtube REST query
     var youtube_query = YOUTUBE_REST_SEARCH.replace("[_QUERY]", query);
@@ -114,9 +112,9 @@ function handleTweet(tweet){
             tweetResult(data, tweet);
         },
         error: function(jqXHR, textStatus, errorThrown){
-            console.log("ERROR: " + textStatus + "\n" + errorThrown);  
+            console.log("YOUTUBE REST ERROR: " + textStatus + "\n" + errorThrown);  
         },
-        timeout: 60000
+        timeout: YOUTUBE_REST_TIMEOUT
     });
     
 }
