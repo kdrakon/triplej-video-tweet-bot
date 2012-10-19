@@ -69,11 +69,13 @@ function startStreamWatch(){
         stream.on('end', function (response) {
             // try to restart after being disconnected from twitter
             console.log("I was disconnected, so I'm going to try to connect again...");
+            stream.destroy();
             setTimeout(startStreamWatch(), TWITTER_STREAM_RECONNECT_TIMEOUT);
         });
         stream.on('destroy', function (response) {
             // try to restart after a 'silent' disconnection from Twitter
             console.log("I was disconnected, so I'm going to try to connect again...");
+            stream.destroy();
             setTimeout(startStreamWatch(), TWITTER_STREAM_RECONNECT_TIMEOUT);
         });
       
@@ -92,11 +94,17 @@ function handleTweet(tweet){
     // try to find the real name of the artist if a twitter handle is given
     var artist_handle = tweet.text.match(/\.@.+?\s{1}/);
     if (artist_handle !== null){
+        
         twitter.showUser(artist_handle[0].replace(".@", ""), function(err, data){
-            // take the first indexed result as the "right" user
-            var artist_name = data[0].name;
-            // query the song with the artists real name
-            querySong(tweet, artist_name);
+            // take the first indexed result as the "right" user, if it exists
+            if (data[0].name !== undefined){
+                var artist_name = data[0].name;
+                // query the song with the artists real name
+                querySong(tweet, artist_name);
+            }else{
+                // for some reason, the artists name was not found, so im going to default to a simple query
+                querySong(tweet);
+            }
         });
         
     } else {
@@ -123,10 +131,12 @@ function querySong(tweet, realname){
     }
     
     // construct the query
-    var query = encodeURIComponent('"'.concat(query_elements[0]).concat('"+"').concat(query_elements[1]).concat('"'));
+    var query = '"'.concat(encodeURIComponent(query_elements[0])).concat('"+"').concat(encodeURIComponent(query_elements[1])).concat('"');
     
     // setup the youtube REST query
     var youtube_query = YOUTUBE_REST_SEARCH.replace("[_QUERY]", query);
+    
+    console.log("Youtube query: ".concat(youtube_query));
     
     // use AJAX to get the JSON query result from Youtube
     $.ajax({
@@ -149,7 +159,7 @@ function querySong(tweet, realname){
 function tweetResult(youtubeResult, originalTweet){
     
     // break if the query is empty
-    if (youtubeResult.feed.entry == undefined){
+    if (youtubeResult.feed.entry === undefined){
         //console.log("but the Youtube result is empty.");
         return;
     }
@@ -160,6 +170,7 @@ function tweetResult(youtubeResult, originalTweet){
     // tweet the video result
     var newTweet = ".@".concat(originalTweet.user.screen_name).concat(" ").concat(youtube_link);
     console.log("I would have tweeted this: " + newTweet);
+    
     //twitter.updateStatus(newTweet, {'in_reply_to_status_id' : originalTweet.id_str}, function(err, data){
             
             //// check if there was an error
