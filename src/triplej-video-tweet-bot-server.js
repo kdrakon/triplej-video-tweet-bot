@@ -24,21 +24,22 @@
  * 
  */
 
-/**
- * Constants
- */
-//twitter keys go here
-
-var YOUTUBE_REST_SEARCH = 'https://gdata.youtube.com/feeds/api/videos?q=[_QUERY]&orderby=relevance&max-results=1&lr=en&alt=json&v=2';
-var YOUTUBE_REST_TIMEOUT = 60000;
-var TWITTER_STREAM_RECONNECT_TIMEOUT = 30000;
-
  /**
   * Node Imports
   */
 var ntwitter = require('ntwitter');
 var twitter; //global handle to ntwitter
 var $ = require('jquery');
+
+/**
+ * Constants
+ */
+//twitter keys go here
+
+
+var YOUTUBE_REST_SEARCH = 'https://gdata.youtube.com/feeds/api/videos?q=[_QUERY]&orderby=relevance&max-results=1&lr=en&alt=json&v=2';
+var YOUTUBE_REST_TIMEOUT = 60000;
+var TWITTER_STREAM_RECONNECT_TIMEOUT = 30000;
 
 /**
  * Methods
@@ -62,7 +63,6 @@ function startStreamWatch(){
         
         // event handler for when new tweets have arrived
         stream.on('data', function (data) {
-            //console.log("Got tweet...");
             handleTweet(data);
         });
                 
@@ -81,30 +81,54 @@ function startStreamWatch(){
 
 }
 
-/*
- * Handle the recently retrieved tweet
- */
 function handleTweet(tweet){
     
+    // break if tweet is undefined
     if (tweet.text == undefined){
         return;
+    }    
+    console.log("Got tweet...");
+    
+    // try to find the real name of the artist if a twitter handle is given
+    var artist_handle = tweet.text.match(/\.@.+?\s{1}/);
+    if (artist_handle !== null){
+        twitter.showUser(artist_handle[0].replace(".@", ""), function(err, data){
+            // take the first indexed result as the "right" user
+            var artist_name = data[0].name;
+            // query the song with the artists real name
+            querySong(tweet, artist_name);
+        });
+        
+    } else {
+        // just query the song using what i've got
+        querySong(tweet);
     }
+}
+
+/*
+ * Lookup the recently retrieved tweet on Youtube
+ */
+function querySong(tweet, realname){
     
-    // user name (real) is tweet.user.name; I replace the twitter handle with their *hopefully better* real name
-    
-    // replace some things in the tweet to make the query better
+    // replace some things in the tweet to make the query better and split it into the artist and song title
+    // query_elements[0] = artist, query_elements[1] = song title
     var query_elements = tweet.text
-        .replace(/\.@.+?\s{1}/, tweet.user.name)
         .replace(/\[.+?\]/, "")
         .replace(/\{.+?\}/, "")
         .split("-");
-    // query[0] = artist, query[1] = song title
-    var query = encodeURIComponent('"'.concat(query_elements[0]).concat('"+"').concat(query_elements[1]).concat('"');
+    
+    // change the name to a real name *if* it was given
+    if (realname !== undefined){
+        query_elements[0] = realname;
+    }
+    
+    // construct the query
+    var query = encodeURIComponent('"'.concat(query_elements[0]).concat('"+"').concat(query_elements[1]).concat('"'));
     
     // setup the youtube REST query
     var youtube_query = YOUTUBE_REST_SEARCH.replace("[_QUERY]", query);
     
-    // use AJAX to get the JSON query result
+    // use AJAX to get the JSON query result from Youtube
     $.ajax({
         url: youtube_query,
         type: 'GET',
@@ -135,16 +159,17 @@ function tweetResult(youtubeResult, originalTweet){
     
     // tweet the video result
     var newTweet = ".@".concat(originalTweet.user.screen_name).concat(" ").concat(youtube_link);
-    twitter.updateStatus(newTweet, {'in_reply_to_status_id' : originalTweet.id_str}, function(err, data){
+    console.log("I would have tweeted this: " + newTweet);
+    //twitter.updateStatus(newTweet, {'in_reply_to_status_id' : originalTweet.id_str}, function(err, data){
             
-            // check if there was an error
-            if (err !== null){
-                console.log("ERROR TWEETING:\n");
-                console.log(data);
-            }else{
-                //console.log("and I tweeted a video.");
-            }
-    });    
+            //// check if there was an error
+            //if (err !== null){
+                //console.log("ERROR TWEETING:\n");
+                //console.log(data);
+            //}else{
+                ////console.log("and I tweeted a video.");
+            //}
+    //});    
     
 }
 
