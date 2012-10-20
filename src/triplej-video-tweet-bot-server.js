@@ -86,9 +86,12 @@ function startStreamWatch(){
 function handleTweet(tweet){
     
     // break if tweet is undefined
-    if (tweet.text == undefined){
+    if (tweet.text === undefined){
         return;
-    }    
+    }else if (tweet.user.screen_name == "jjj2Video"){
+        // I just got streamed my own tweet, so "break"
+        return;
+    }
     console.log("Got tweet...");
     
     // try to find the real name of the artist if a twitter handle is given
@@ -121,9 +124,10 @@ function querySong(tweet, realname){
     // replace some things in the tweet to make the query better and split it into the artist and song title
     // query_elements[0] = artist, query_elements[1] = song title
     var query_elements = tweet.text
+        .replace("&", " ")
         .replace(/\[.+?\]/, "")
         .replace(/\{.+?\}/, "")
-        .split("-");
+        .split(" - ");
     
     // change the name to a real name *if* it was given
     if (realname !== undefined){
@@ -160,7 +164,7 @@ function tweetResult(youtubeResult, originalTweet){
     
     // break if the query is empty
     if (youtubeResult.feed.entry === undefined){
-        //console.log("but the Youtube result is empty.");
+        console.log("I didn't find a video on Youtube");
         return;
     }
     
@@ -169,18 +173,18 @@ function tweetResult(youtubeResult, originalTweet){
     
     // tweet the video result
     var newTweet = ".@".concat(originalTweet.user.screen_name).concat(" ").concat(youtube_link);
-    console.log("I would have tweeted this: " + newTweet);
+    //console.log("I would have tweeted this: " + newTweet);
     
-    //twitter.updateStatus(newTweet, {'in_reply_to_status_id' : originalTweet.id_str}, function(err, data){
+    twitter.updateStatus(newTweet, {'in_reply_to_status_id' : originalTweet.id_str}, function(err, data){
             
-            //// check if there was an error
-            //if (err !== null){
-                //console.log("ERROR TWEETING:\n");
-                //console.log(data);
-            //}else{
-                ////console.log("and I tweeted a video.");
-            //}
-    //});    
+            // check if there was an error
+            if (err !== null){
+                console.log("ERROR TWEETING:\n");
+                console.log(data);
+            }else{
+                console.log("and I tweeted a video.");
+            }
+    });    
     
 }
 
