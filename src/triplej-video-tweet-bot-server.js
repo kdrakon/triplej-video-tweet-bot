@@ -60,6 +60,9 @@ function startStreamWatch(){
 
     // open a synchronous connection the Twitter Streams API: we will watch all the followers of the user this bot represents
     twitter.stream('user', {with:'followings'}, function(stream) {
+    //twitter.stream('statuses/sample', function(stream) {        
+        
+        console.log("Connected to Twitter stream...");
         
         // event handler for when new tweets have arrived
         stream.on('data', function (data) {
@@ -98,15 +101,18 @@ function handleTweet(tweet){
     var artist_handle = tweet.text.match(/\.@.+?\s{1}/);
     if (artist_handle !== null){
         
+        // perform twitter lookup
         twitter.showUser(artist_handle[0].replace(".@", ""), function(err, data){
             // take the first indexed result as the "right" user, if it exists
-            if (data[0].name !== undefined){
-                var artist_name = data[0].name;
-                // query the song with the artists real name
-                querySong(tweet, artist_name);
-            }else{
-                // for some reason, the artists name was not found, so im going to default to a simple query
-                querySong(tweet);
+            if (data !== undefined){
+                if (data[0].name !== undefined){
+                    var artist_name = data[0].name;
+                    // query the song with the artists real name
+                    querySong(tweet, artist_name);
+                }else{
+                    // for some reason, the artists name was not found, so im going to default to a simple query
+                    querySong(tweet);
+                }
             }
         });
         
@@ -140,7 +146,7 @@ function querySong(tweet, realname){
     // setup the youtube REST query
     var youtube_query = YOUTUBE_REST_SEARCH.replace("[_QUERY]", query);
     
-    console.log("Youtube query: ".concat(youtube_query));
+    console.log("Youtube query: ".concat(query));
     
     // use AJAX to get the JSON query result from Youtube
     $.ajax({
@@ -173,8 +179,8 @@ function tweetResult(youtubeResult, originalTweet){
     
     // tweet the video result
     var newTweet = ".@".concat(originalTweet.user.screen_name).concat(" ").concat(youtube_link);
-    //console.log("I would have tweeted this: " + newTweet);
     
+    //console.log("I would have tweeted this: " + newTweet);    
     twitter.updateStatus(newTweet, {'in_reply_to_status_id' : originalTweet.id_str}, function(err, data){
             
             // check if there was an error
@@ -182,7 +188,8 @@ function tweetResult(youtubeResult, originalTweet){
                 console.log("ERROR TWEETING:\n");
                 console.log(data);
             }else{
-                console.log("and I tweeted a video.");
+                var time = new Date(); var hour = time.getHours(); var minute = time.getMinutes();
+                console.log("...and I tweeted a video. [".concat(hour).concat(":").concat(minute).concat("]"));
             }
     });    
     
