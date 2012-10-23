@@ -41,6 +41,15 @@ var YOUTUBE_REST_SEARCH = 'https://gdata.youtube.com/feeds/api/videos?q=[_QUERY]
 var YOUTUBE_REST_TIMEOUT = 60000;
 var TWITTER_STREAM_RECONNECT_TIMEOUT = 30000;
 
+var TWEET_INTROS = [
+    "Here's a video for that last song...",
+    "And here's another one...",
+    "You can play this video if you just missed that last song...",
+    "Wanna listen & watch again?",
+    "Let's play it again...",
+    "Here you go..."
+];
+
 /**
  * Methods
  */
@@ -61,7 +70,8 @@ function startStreamWatch(){
     // open a synchronous connection the Twitter Streams API: we will watch all the followers of the user this bot represents
     twitter.stream('user', {with:'followings'}, function(stream) {
 
-        console.log("Connected to Twitter stream...");
+        var time = new Date(); var hour = time.getHours(); var minute = time.getMinutes();
+        console.log("Connected to Twitter stream...[".concat(hour).concat(":").concat(minute).concat("]"));
         
         // event handler for when new tweets have arrived
         stream.on('data', function (data) {
@@ -173,8 +183,10 @@ function tweetResult(youtubeResult, originalTweet){
     // the link to the video is under .feed.entry[0].link[0].href
     var youtube_link = youtubeResult.feed.entry[0].link[0].href;
     
+    var intro = TWEET_INTROS[Math.floor(Math.random()*TWEET_INTROS.length)];
+    
     // tweet the video result
-    var newTweet = ".@".concat(originalTweet.user.screen_name).concat(" ").concat(youtube_link);
+    var newTweet = ".@".concat(originalTweet.user.screen_name).concat(" ").concat(intro).concat(" ").concat(youtube_link);
     
     console.log("I would have tweeted this: " + newTweet);    
     //twitter.updateStatus(newTweet, {'in_reply_to_status_id' : originalTweet.id_str}, function(err, data){            
