@@ -37,7 +37,7 @@ var $ = require('jquery');
 //twitter keys go here
 
 
-var YOUTUBE_REST_SEARCH = 'https://gdata.youtube.com/feeds/api/videos?q=[_QUERY]&orderby=relevance&max-results=1&lr=en&alt=json&v=2';
+var YOUTUBE_REST_SEARCH = 'https://gdata.youtube.com/feeds/api/videos?q=[_QUERY]&orderby=relevance&max-results=1&alt=json&v=2';
 var YOUTUBE_REST_TIMEOUT = 60000;
 var TWITTER_STREAM_RECONNECT_TIMEOUT = 30000;
 
@@ -60,26 +60,24 @@ function startStreamWatch(){
 
     // open a synchronous connection the Twitter Streams API: we will watch all the followers of the user this bot represents
     twitter.stream('user', {with:'followings'}, function(stream) {
-    //twitter.stream('statuses/sample', function(stream) {        
-        
+
         console.log("Connected to Twitter stream...");
         
         // event handler for when new tweets have arrived
         stream.on('data', function (data) {
             handleTweet(data);
         });
-                
+           
+        // log disconnections
         stream.on('end', function (response) {
-            // try to restart after being disconnected from twitter
-            console.log("I was disconnected, so I'm going to try to connect again...");
+            var time = new Date(); var hour = time.getHours(); var minute = time.getMinutes();
+            console.log("I was disconnected [".concat(hour).concat(":").concat(minute).concat("]"));
             stream.destroy();
-            setTimeout(startStreamWatch(), TWITTER_STREAM_RECONNECT_TIMEOUT);
         });
         stream.on('destroy', function (response) {
-            // try to restart after a 'silent' disconnection from Twitter
-            console.log("I was disconnected, so I'm going to try to connect again...");
+            var time = new Date(); var hour = time.getHours(); var minute = time.getMinutes();
+            console.log("I was disconnected [".concat(hour).concat(":").concat(minute).concat("]"));
             stream.destroy();
-            setTimeout(startStreamWatch(), TWITTER_STREAM_RECONNECT_TIMEOUT);
         });
       
     });
@@ -95,8 +93,7 @@ function handleTweet(tweet){
         // I just got streamed my own tweet, so "break"
         return;
     }
-    console.log("Got tweet...");
-    
+
     // try to find the real name of the artist if a twitter handle is given
     var artist_handle = tweet.text.match(/\.@.+?\s{1}/);
     if (artist_handle !== null){
@@ -106,7 +103,9 @@ function handleTweet(tweet){
             // take the first indexed result as the "right" user, if it exists
             if (data !== undefined){
                 if (data[0].name !== undefined){
-                    var artist_name = data[0].name;
+                    // save the artist name (cleaned up of "bad" characters)
+                    var artist_name = data[0].name
+                        .replace("&", " and ");
                     // query the song with the artists real name
                     querySong(tweet, artist_name);
                 }else{
@@ -130,7 +129,7 @@ function querySong(tweet, realname){
     // replace some things in the tweet to make the query better and split it into the artist and song title
     // query_elements[0] = artist, query_elements[1] = song title
     var query_elements = tweet.text
-        .replace("&", " ")
+        .replace("&", " and ")
         .replace(/\[.+?\]/, "")
         .replace(/\{.+?\}/, "")
         .split(" - ");
@@ -145,8 +144,6 @@ function querySong(tweet, realname){
     
     // setup the youtube REST query
     var youtube_query = YOUTUBE_REST_SEARCH.replace("[_QUERY]", query);
-    
-    console.log("Youtube query: ".concat(query));
     
     // use AJAX to get the JSON query result from Youtube
     $.ajax({
@@ -170,7 +167,6 @@ function tweetResult(youtubeResult, originalTweet){
     
     // break if the query is empty
     if (youtubeResult.feed.entry === undefined){
-        console.log("I didn't find a video on Youtube");
         return;
     }
     
@@ -180,18 +176,14 @@ function tweetResult(youtubeResult, originalTweet){
     // tweet the video result
     var newTweet = ".@".concat(originalTweet.user.screen_name).concat(" ").concat(youtube_link);
     
-    //console.log("I would have tweeted this: " + newTweet);    
-    twitter.updateStatus(newTweet, {'in_reply_to_status_id' : originalTweet.id_str}, function(err, data){
-            
-            // check if there was an error
-            if (err !== null){
-                console.log("ERROR TWEETING:\n");
-                console.log(data);
-            }else{
-                var time = new Date(); var hour = time.getHours(); var minute = time.getMinutes();
-                console.log("...and I tweeted a video. [".concat(hour).concat(":").concat(minute).concat("]"));
-            }
-    });    
+    console.log("I would have tweeted this: " + newTweet);    
+    //twitter.updateStatus(newTweet, {'in_reply_to_status_id' : originalTweet.id_str}, function(err, data){            
+            //// check if there was an error
+            //if (err !== null){
+                //console.log("ERROR TWEETING:\n");
+                //console.log(data);
+            //}
+    //});    
     
 }
 
@@ -199,6 +191,7 @@ function tweetResult(youtubeResult, originalTweet){
 /**
  * Node Main
  */
- 
+
+// start the main loop
 startStreamWatch();
  
