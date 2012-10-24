@@ -37,17 +37,18 @@ var $ = require('jquery');
 //twitter keys go here
 
 
-var YOUTUBE_REST_SEARCH = 'https://gdata.youtube.com/feeds/api/videos?q=[_QUERY]&orderby=relevance&max-results=1&alt=json&v=2';
+var YOUTUBE_REST_SEARCH = 'http://gdata.youtube.com/feeds/api/videos?q=[_QUERY]&orderby=relevance&max-results=1&alt=json&v=2';
 var YOUTUBE_REST_TIMEOUT = 60000;
 var TWITTER_STREAM_RECONNECT_TIMEOUT = 30000;
 
 var TWEET_INTROS = [
     "Here's a video for that last song...",
     "And here's another one...",
-    "You can play this video if you just missed that last song...",
+    "Play this video if you missed that last song...",
     "Wanna listen & watch again?",
     "Let's play it again...",
-    "Here you go..."
+    "Here you go...",
+    "Check out the video for that last song..."
 ];
 
 /**
@@ -70,8 +71,7 @@ function startStreamWatch(){
     // open a synchronous connection the Twitter Streams API: we will watch all the followers of the user this bot represents
     twitter.stream('user', {with:'followings'}, function(stream) {
 
-        var time = new Date(); var hour = time.getHours(); var minute = time.getMinutes();
-        console.log("Connected to Twitter stream...[".concat(hour).concat(":").concat(minute).concat("]"));
+        console.log("Connected to Twitter stream...".concat(timeString()));
         
         // event handler for when new tweets have arrived
         stream.on('data', function (data) {
@@ -80,13 +80,11 @@ function startStreamWatch(){
            
         // log disconnections
         stream.on('end', function (response) {
-            var time = new Date(); var hour = time.getHours(); var minute = time.getMinutes();
-            console.log("I was disconnected [".concat(hour).concat(":").concat(minute).concat("]"));
+            console.log("I was disconnected ".concat(timeString()));
             stream.destroy();
         });
         stream.on('destroy', function (response) {
-            var time = new Date(); var hour = time.getHours(); var minute = time.getMinutes();
-            console.log("I was disconnected [".concat(hour).concat(":").concat(minute).concat("]"));
+            console.log("I was disconnected ".concat(timeString()));
             stream.destroy();
         });
       
@@ -139,7 +137,7 @@ function querySong(tweet, realname){
     // replace some things in the tweet to make the query better and split it into the artist and song title
     // query_elements[0] = artist, query_elements[1] = song title
     var query_elements = tweet.text
-        .replace("&", " and ")
+        .replace(" & ", " and ")
         .replace(/\[.+?\]/, "")
         .replace(/\{.+?\}/, "")
         .split(" - ");
@@ -188,15 +186,23 @@ function tweetResult(youtubeResult, originalTweet){
     // tweet the video result
     var newTweet = ".@".concat(originalTweet.user.screen_name).concat(" ").concat(intro).concat(" ").concat(youtube_link);
     
-    console.log("I would have tweeted this: " + newTweet);    
-    //twitter.updateStatus(newTweet, {'in_reply_to_status_id' : originalTweet.id_str}, function(err, data){            
-            //// check if there was an error
-            //if (err !== null){
-                //console.log("ERROR TWEETING:\n");
-                //console.log(data);
-            //}
-    //});    
+    //console.log("I would have tweeted this: " + newTweet);    
+    twitter.updateStatus(newTweet, {'in_reply_to_status_id' : originalTweet.id_str}, function(err, data){            
+            // check if there was an error
+            if (err !== null){
+                console.log("ERROR TWEETING: ".concat(timeString()));
+                console.log(newTweet);
+            }
+    });    
     
+}
+
+/*
+ * Helper function to just get formatted time string
+ */
+function timeString(){
+    var time = new Date(); var hour = time.getHours(); var minute = time.getMinutes();
+    return "[".concat(hour).concat(":").concat(minute).concat("]");
 }
 
 
